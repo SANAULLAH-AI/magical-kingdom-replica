@@ -1,38 +1,8 @@
+
 import axios from 'axios';
 import { toast } from 'sonner';
 
-// API Configuration
-const API_KEY = '0f012c42b77a742b6b060aa933188a9c'; // Replace with your TMDB API key
-const BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
-const DISNEY_API_URL = 'https://api.disneyapi.dev';
-
-// Local Storage Keys
-const STORAGE_KEY = '@disney_movies';
-const USER_KEY = '@disney_user';
-const FAV_KEY = '@disney_favorites';
-const HIST_KEY = '@disney_history';
-const DOWN_KEY = '@disney_downloads';
-
-// TMDB API endpoints
-const endpoints = {
-  trending: `${BASE_URL}/trending/movie/week?api_key=${API_KEY}`,
-  popular: `${BASE_URL}/movie/popular?api_key=${API_KEY}`,
-  topRated: `${BASE_URL}/movie/top_rated?api_key=${API_KEY}`,
-  disneyMovies: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_companies=2`,
-  pixarMovies: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_companies=3`,
-  marvelMovies: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_companies=420`,
-  starWarsMovies: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_keywords=4270`,
-  animation: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_genres=16`,
-  family: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_genres=10751`,
-  documentary: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_genres=99`,
-  movieDetails: (id: string) => `${BASE_URL}/movie/${id}?api_key=${API_KEY}&append_to_response=videos,credits,similar`,
-  disneyCharacters: `${DISNEY_API_URL}/characters`,
-  searchMovies: (query: string) => `${BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(query)}`
-};
-
-// Interfaces for API responses
+// Interface definitions
 export interface TMDBMovie {
   id: number;
   title: string;
@@ -62,6 +32,77 @@ export interface DisneyCharacter {
   allies: string[];
   enemies: string[];
 }
+
+export interface Movie {
+  id: string;
+  title: string;
+  description: string;
+  posterPath: string;
+  backdropPath: string;
+  year: string;
+  rating: string;
+  duration: string;
+  category: string[];
+  videoUrl?: string;
+  logo?: string;
+  lastWatched?: string;
+  downloadDate?: string;
+  downloadSize?: number;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  memberSince: string;
+  notifications: {
+    newContent: boolean;
+    watchlist: boolean;
+    specialOffers: boolean;
+    newsletters: boolean;
+  };
+  preferences: {
+    autoplay: boolean;
+    playbackQuality: string;
+    downloads: {
+      wifiOnly: boolean;
+      autoDelete: boolean;
+      videoQuality: string;
+    };
+  };
+}
+
+// API Configuration
+const API_KEY = '0f012c42b77a742b6b060aa933188a9c'; // Replace with your TMDB API key
+const BASE_URL = 'https://api.themoviedb.org/3';
+const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
+const DISNEY_API_URL = 'https://api.disneyapi.dev';
+
+// Local Storage Keys
+export const STORAGE_KEY = '@disney_movies';
+export const USER_KEY = '@disney_user';
+export const FAV_KEY = '@disney_favorites';
+export const HIST_KEY = '@disney_history';
+export const DOWN_KEY = '@disney_downloads';
+
+// TMDB API endpoints
+export const endpoints = {
+  trending: `${BASE_URL}/trending/movie/week?api_key=${API_KEY}`,
+  popular: `${BASE_URL}/movie/popular?api_key=${API_KEY}`,
+  topRated: `${BASE_URL}/movie/top_rated?api_key=${API_KEY}`,
+  disneyMovies: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_companies=2`,
+  pixarMovies: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_companies=3`,
+  marvelMovies: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_companies=420`,
+  starWarsMovies: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_keywords=4270`,
+  animation: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_genres=16`,
+  family: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_genres=10751`,
+  documentary: `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_genres=99`,
+  movieDetails: (id: string) => `${BASE_URL}/movie/${id}?api_key=${API_KEY}&append_to_response=videos,credits,similar`,
+  disneyCharacters: `${DISNEY_API_URL}/characters`,
+  searchMovies: (query: string) => `${BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(query)}`
+};
 
 // Convert TMDB movie to our app's Movie format
 export const convertTMDBToMovie = (tmdbMovie: TMDBMovie): Movie => {
@@ -282,7 +323,7 @@ export const updateUserPreferences = async (preferences: any): Promise<User> => 
 };
 
 // Favorites management
-export const getFavorites = async () => {
+export const getFavorites = async (): Promise<Movie[]> => {
   try {
     // In a real app, this would be an API call
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -295,14 +336,14 @@ export const getFavorites = async () => {
   }
 };
 
-export const addToFavorites = async (movie: any) => {
+export const addToFavorites = async (movie: Movie): Promise<Movie[]> => {
   try {
     // Get current favorites
     const favData = localStorage.getItem(FAV_KEY);
-    let favorites = favData ? JSON.parse(favData) : [];
+    let favorites: Movie[] = favData ? JSON.parse(favData) : [];
     
     // Check if already in favorites
-    if (!favorites.some((fav: any) => fav.id === movie.id)) {
+    if (!favorites.some((fav) => fav.id === movie.id)) {
       favorites.push(movie);
       localStorage.setItem(FAV_KEY, JSON.stringify(favorites));
       toast.success(`${movie.title} added to favorites`);
@@ -315,17 +356,17 @@ export const addToFavorites = async (movie: any) => {
   }
 };
 
-export const removeFromFavorites = async (movieId: string | number) => {
+export const removeFromFavorites = async (movieId: string | number): Promise<Movie[]> => {
   try {
     // Get current favorites
     const favData = localStorage.getItem(FAV_KEY);
     if (!favData) return [];
     
-    let favorites = JSON.parse(favData);
-    let removedMovie;
+    let favorites: Movie[] = JSON.parse(favData);
+    let removedMovie: Movie | undefined;
     
     // Remove movie from favorites
-    const updatedFavorites = favorites.filter((movie: any) => {
+    const updatedFavorites = favorites.filter((movie) => {
       if (movie.id !== movieId) return true;
       removedMovie = movie;
       return false;
@@ -344,7 +385,7 @@ export const removeFromFavorites = async (movieId: string | number) => {
 };
 
 // Watch history management
-export const getWatchHistory = async () => {
+export const getWatchHistory = async (): Promise<Movie[]> => {
   try {
     await new Promise(resolve => setTimeout(resolve, 500));
     const histData = localStorage.getItem(HIST_KEY);
@@ -355,14 +396,14 @@ export const getWatchHistory = async () => {
   }
 };
 
-export const addToWatchHistory = async (movie: any) => {
+export const addToWatchHistory = async (movie: Movie): Promise<Movie[]> => {
   try {
     // Get current history
     const histData = localStorage.getItem(HIST_KEY);
-    let history = histData ? JSON.parse(histData) : [];
+    let history: Movie[] = histData ? JSON.parse(histData) : [];
     
     // Remove if already in history (to move to top)
-    history = history.filter((item: any) => item.id !== movie.id);
+    history = history.filter((item) => item.id !== movie.id);
     
     // Add to top of history with timestamp
     movie.lastWatched = new Date().toISOString();
@@ -382,7 +423,7 @@ export const addToWatchHistory = async (movie: any) => {
 };
 
 // Downloads management
-export const getDownloads = async () => {
+export const getDownloads = async (): Promise<Movie[]> => {
   try {
     await new Promise(resolve => setTimeout(resolve, 500));
     const downData = localStorage.getItem(DOWN_KEY);
@@ -393,14 +434,14 @@ export const getDownloads = async () => {
   }
 };
 
-export const addToDownloads = async (movie: any) => {
+export const addToDownloads = async (movie: Movie): Promise<Movie[]> => {
   try {
     // Get current downloads
     const downData = localStorage.getItem(DOWN_KEY);
-    let downloads = downData ? JSON.parse(downData) : [];
+    let downloads: Movie[] = downData ? JSON.parse(downData) : [];
     
     // Check if already downloaded
-    if (!downloads.some((item: any) => item.id === movie.id)) {
+    if (!downloads.some((item) => item.id === movie.id)) {
       // Add download details
       movie.downloadDate = new Date().toISOString();
       movie.downloadSize = Math.floor(Math.random() * 2000) + 500; // Random size in MB
@@ -416,17 +457,17 @@ export const addToDownloads = async (movie: any) => {
   }
 };
 
-export const removeFromDownloads = async (movieId: string | number) => {
+export const removeFromDownloads = async (movieId: string | number): Promise<Movie[]> => {
   try {
     // Get current downloads
     const downData = localStorage.getItem(DOWN_KEY);
     if (!downData) return [];
     
-    let downloads = JSON.parse(downData);
-    let removedMovie;
+    let downloads: Movie[] = JSON.parse(downData);
+    let removedMovie: Movie | undefined;
     
     // Remove movie from downloads
-    const updatedDownloads = downloads.filter((movie: any) => {
+    const updatedDownloads = downloads.filter((movie) => {
       if (movie.id !== movieId) return true;
       removedMovie = movie;
       return false;
@@ -446,7 +487,8 @@ export const removeFromDownloads = async (movieId: string | number) => {
 
 // Export all the functions and constants
 export default {
-  // ... keep existing exports
+  fetchData,
+  convertTMDBToMovie,
   loginUser,
   logout,
   getUserProfile,
