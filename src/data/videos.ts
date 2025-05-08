@@ -1,6 +1,12 @@
 
 import { useQuery } from '@tanstack/react-query';
-import { findMovieTrailer, getPopularVideos, getVideoById, searchVideos, PexelsVideo } from '@/services/pexelsApi';
+import { 
+  findMovieTrailer, 
+  getPopularVideos, 
+  getVideoById, 
+  searchVideos, 
+  PexelsVideo 
+} from '@/services/pexelsApi';
 
 // Hook to search for videos
 export const useVideoSearch = (query: string, enabled: boolean = true) => {
