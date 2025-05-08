@@ -23,9 +23,7 @@ const MovieCarousel = ({
   const carouselRef = useRef<HTMLDivElement>(null);
   
   // If categoryId is provided, fetch movies for that category
-  const { data: fetchedMovies, isLoading: isFetching } = useMoviesByCategory(categoryId || '', {
-    enabled: !!categoryId // Only fetch if categoryId is provided
-  });
+  const { data: fetchedMovies, isLoading: isFetching } = useMoviesByCategory(categoryId || '');
   
   // Determine which movies to display and loading state
   const movies = propMovies || (fetchedMovies || []);

@@ -1,12 +1,25 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Search, Home, Film, Tv, Grid, User } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Search, Home, Film, Tv, Grid, User, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getUserProfile, logout } from '@/services/api';
+import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   
   // Handle scroll events to make header transparent or solid
   useEffect(() => {
@@ -21,6 +34,32 @@ const Header = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Check if user is logged in
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const userData = await getUserProfile();
+        setUser(userData);
+      } catch (error) {
+        console.error('Error checking user:', error);
+      }
+    };
+    
+    checkUser();
+  }, [location.pathname]); // Re-check when route changes
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setUser(null);
+      toast.success('Successfully logged out');
+      navigate('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast.error('Failed to log out');
+    }
+  };
 
   return (
     <header 
@@ -44,12 +83,56 @@ const Header = () => {
       
       {/* Right side controls */}
       <div className="flex items-center space-x-5 ml-auto">
-        <button className="nav-link">
+        <Link to="/search" className="nav-link">
           <Search size={20} />
-        </button>
-        <button className="nav-link">
-          <User size={20} />
-        </button>
+        </Link>
+        
+        {/* User Profile */}
+        {user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center space-x-2 focus:outline-none">
+                <Avatar className="h-8 w-8 border-2 border-disney-accent-blue">
+                  <AvatarImage src={user.avatar || ''} alt={user.name} />
+                  <AvatarFallback className="bg-disney-secondary-blue text-disney-white">
+                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-disney-secondary-blue border-disney-gray-700 text-disney-white">
+              <DropdownMenuLabel className="text-disney-gray-300">My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-disney-gray-700" />
+              <DropdownMenuItem 
+                className="focus:bg-disney-gray-900 focus:text-disney-white cursor-pointer"
+                onClick={() => navigate('/profile')}
+              >
+                <User size={16} className="mr-2" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="focus:bg-disney-gray-900 focus:text-disney-white cursor-pointer"
+                onClick={() => navigate('/settings')}
+              >
+                <Settings size={16} className="mr-2" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-disney-gray-700" />
+              <DropdownMenuItem 
+                className="focus:bg-disney-gray-900 focus:text-disney-white cursor-pointer"
+                onClick={handleLogout}
+              >
+                <LogOut size={16} className="mr-2" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Link to="/login" className="nav-link flex items-center space-x-2">
+            <User size={20} />
+            <span className="hidden md:inline">Sign In</span>
+          </Link>
+        )}
       </div>
       
       {/* Mobile Navigation - Bottom Tab */}
@@ -57,7 +140,11 @@ const Header = () => {
         <NavLink to="/" icon={<Home size={20} />} mobileOnly />
         <NavLink to="/movies" icon={<Film size={20} />} mobileOnly />
         <NavLink to="/search" icon={<Search size={20} />} mobileOnly />
-        <NavLink to="/profile" icon={<User size={20} />} mobileOnly />
+        <NavLink 
+          to={user ? "/profile" : "/login"} 
+          icon={<User size={20} />} 
+          mobileOnly 
+        />
       </div>
     </header>
   );
