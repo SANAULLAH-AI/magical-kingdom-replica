@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -52,6 +53,19 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				disney: {
+					'dark-blue': '#0E111B',
+					'secondary-blue': '#1A1F2C',
+					'accent-blue': '#0072D2',
+					'brand-blue': '#113CCF',
+					'light-blue': '#40CDEB',
+					'white': '#FFFFFF',
+					'gray-100': '#F9F9F9',
+					'gray-300': '#CCCCCC',
+					'gray-500': '#888888',
+					'gray-700': '#444444',
+					'gray-900': '#222222',
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -84,11 +98,20 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					from: {
+						opacity: '0'
+					},
+					to: {
+						opacity: '1'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 1s ease-out'
 			}
 		}
 	},
