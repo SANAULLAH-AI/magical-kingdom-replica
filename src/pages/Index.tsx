@@ -4,12 +4,19 @@ import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
 import MovieCarousel from '@/components/MovieCarousel';
 import CategoryTabs from '@/components/CategoryTabs';
-import { getMoviesByCategory, getFeaturedMovies } from '@/data/movies';
+import { useMoviesByCategory, useFeaturedMovies } from '@/data/movies';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState('popular');
-  const featuredMovies = getFeaturedMovies();
-  const categoryMovies = getMoviesByCategory(selectedCategory);
+  const { data: featuredMovies, isLoading: isFeaturedLoading } = useFeaturedMovies();
+  const { data: categoryMovies, isLoading: isCategoryLoading } = useMoviesByCategory(selectedCategory);
+  
+  // Additional category data for carousel sections
+  const { data: disneyOriginals } = useMoviesByCategory('disney');
+  const { data: newReleases } = useMoviesByCategory('trending');
+  const { data: animationMovies } = useMoviesByCategory('animation');
+  const { data: familyMovies } = useMoviesByCategory('family');
 
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);
@@ -21,7 +28,11 @@ const Index = () => {
       
       <main className="pt-16">
         {/* Hero section with featured movie */}
-        <HeroSection featuredMovies={featuredMovies} />
+        {isFeaturedLoading ? (
+          <Skeleton className="h-[70vh] min-h-[500px] w-full" />
+        ) : (
+          <HeroSection featuredMovies={featuredMovies || []} />
+        )}
         
         {/* Category selection */}
         <div className="mt-8">
@@ -34,28 +45,33 @@ const Index = () => {
         {/* Movies by category */}
         <MovieCarousel 
           title={selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} 
-          movies={categoryMovies} 
+          movies={categoryMovies || []} 
+          isLoading={isCategoryLoading}
         />
         
         {/* Additional categories */}
         <MovieCarousel 
           title="Disney Originals" 
-          movies={getMoviesByCategory('popular').slice(0, 8)} 
+          movies={disneyOriginals || []} 
+          isLoading={!disneyOriginals}
         />
         
         <MovieCarousel 
           title="New to Disney+" 
-          movies={getMoviesByCategory('trending').slice(0, 8)} 
+          movies={newReleases || []} 
+          isLoading={!newReleases}
         />
         
         <MovieCarousel 
           title="Animation" 
-          movies={getMoviesByCategory('animation')} 
+          movies={animationMovies || []} 
+          isLoading={!animationMovies}
         />
         
         <MovieCarousel 
           title="Family Favorites" 
-          movies={getMoviesByCategory('family')} 
+          movies={familyMovies || []} 
+          isLoading={!familyMovies}
         />
       </main>
       

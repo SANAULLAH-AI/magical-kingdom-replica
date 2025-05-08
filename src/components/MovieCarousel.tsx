@@ -2,15 +2,34 @@
 import React, { useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import MovieCard from './MovieCard';
-import { Movie } from '@/data/movies';
+import { Movie, useMoviesByCategory } from '@/data/movies';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MovieCarouselProps {
   title: string;
-  movies: Movie[];
+  movies?: Movie[];
+  isLoading?: boolean;
+  categoryId?: string;
+  movieId?: string;
 }
 
-const MovieCarousel = ({ title, movies }: MovieCarouselProps) => {
+const MovieCarousel = ({ 
+  title, 
+  movies: propMovies, 
+  isLoading: propIsLoading,
+  categoryId,
+  movieId
+}: MovieCarouselProps) => {
   const carouselRef = useRef<HTMLDivElement>(null);
+  
+  // If categoryId is provided, fetch movies for that category
+  const { data: fetchedMovies, isLoading: isFetching } = useMoviesByCategory(categoryId || '', {
+    enabled: !!categoryId // Only fetch if categoryId is provided
+  });
+  
+  // Determine which movies to display and loading state
+  const movies = propMovies || (fetchedMovies || []);
+  const isLoading = propIsLoading !== undefined ? propIsLoading : isFetching;
 
   const scroll = (direction: 'left' | 'right') => {
     if (carouselRef.current) {
@@ -23,7 +42,12 @@ const MovieCarousel = ({ title, movies }: MovieCarouselProps) => {
     }
   };
 
-  if (movies.length === 0) {
+  // Filter out the current movie if movieId is provided
+  const filteredMovies = movieId 
+    ? movies.filter(movie => movie.id !== movieId)
+    : movies;
+
+  if (filteredMovies.length === 0 && !isLoading) {
     return null;
   }
 
@@ -57,9 +81,19 @@ const MovieCarousel = ({ title, movies }: MovieCarouselProps) => {
           className="flex overflow-x-auto space-x-4 pb-6 scrollbar-hide"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {movies.map((movie) => (
-            <MovieCard key={movie.id} movie={movie} />
-          ))}
+          {isLoading ? (
+            // Loading skeletons
+            [...Array(6)].map((_, i) => (
+              <div key={i} className="flex-shrink-0">
+                <Skeleton className="w-36 h-52 md:w-44 md:h-64" />
+              </div>
+            ))
+          ) : (
+            // Movie cards
+            filteredMovies.map((movie) => (
+              <MovieCard key={movie.id} movie={movie} />
+            ))
+          )}
         </div>
       </div>
     </div>

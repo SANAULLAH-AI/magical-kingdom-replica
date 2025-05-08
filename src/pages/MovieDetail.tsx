@@ -1,17 +1,20 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Play, Plus, Share2, ChevronLeft } from 'lucide-react';
+import { Play, Plus, Share2, ChevronLeft, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import MovieCarousel from '@/components/MovieCarousel';
-import { getMovieById, getMoviesByCategory } from '@/data/movies';
+import { useMovieDetails, useFavorites } from '@/data/movies';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/hooks/use-toast';
 
 const MovieDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const movie = getMovieById(id || '');
+  const { data: movie, isLoading, error } = useMovieDetails(id || '');
   const [isScrolled, setIsScrolled] = useState(false);
+  const { addFavorite, removeFavorite, isFavorite } = useFavorites();
   
   // Handle scroll events for the animation
   useEffect(() => {
@@ -27,13 +30,82 @@ const MovieDetail = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  if (!movie) {
-    return <div className="flex items-center justify-center h-screen">Movie not found</div>;
+  // Handle error state
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error loading movie details",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    }
+  }, [error]);
+
+  const handleToggleFavorite = () => {
+    if (!movie) return;
+    
+    if (isFavorite(movie.id)) {
+      removeFavorite(movie.id);
+      toast({
+        title: "Removed from Watchlist",
+        description: `${movie.title} has been removed from your watchlist`,
+      });
+    } else {
+      addFavorite(movie);
+      toast({
+        title: "Added to Watchlist",
+        description: `${movie.title} has been added to your watchlist`,
+      });
+    }
+  };
+
+  const handleShare = () => {
+    if (navigator.share && movie) {
+      navigator.share({
+        title: movie.title,
+        text: `Check out ${movie.title} on Disney+`,
+        url: window.location.href,
+      }).catch((err) => {
+        toast({
+          title: "Sharing failed",
+          description: "Could not share this content",
+        });
+      });
+    } else {
+      // Fallback for browsers that don't support navigator.share
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        toast({
+          title: "Link copied",
+          description: "Movie link copied to clipboard",
+        });
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-disney-dark-blue pb-20">
+        <Header />
+        <div className="relative h-[60vh] min-h-[400px]">
+          <Skeleton className="w-full h-full" />
+        </div>
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          <Skeleton className="w-64 h-10 mb-2" />
+          <Skeleton className="w-full h-24 mb-8" />
+          <Skeleton className="w-32 h-6 mb-4" />
+          <div className="flex flex-wrap gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="w-36 h-52" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const relatedMovies = movie.category.length > 0
-    ? getMoviesByCategory(movie.category[0]).filter(m => m.id !== movie.id)
-    : [];
+  if (!movie) {
+    return <div className="flex items-center justify-center h-screen text-disney-white">Movie not found</div>;
+  }
 
   return (
     <div className="min-h-screen bg-disney-dark-blue pb-20">
@@ -93,12 +165,29 @@ const MovieDetail = () => {
                 Play
               </Button>
               
-              <Button variant="outline" className="border-disney-gray-300 text-disney-white hover:bg-disney-secondary-blue">
-                <Plus className="mr-2 h-4 w-4" />
-                Add to Watchlist
+              <Button 
+                variant="outline" 
+                className="border-disney-gray-300 text-disney-white hover:bg-disney-secondary-blue"
+                onClick={handleToggleFavorite}
+              >
+                {isFavorite(movie.id) ? (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    In Watchlist
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add to Watchlist
+                  </>
+                )}
               </Button>
               
-              <Button variant="outline" className="border-disney-gray-300 text-disney-white hover:bg-disney-secondary-blue">
+              <Button 
+                variant="outline" 
+                className="border-disney-gray-300 text-disney-white hover:bg-disney-secondary-blue"
+                onClick={handleShare}
+              >
                 <Share2 className="mr-2 h-4 w-4" />
                 Share
               </Button>
@@ -112,24 +201,21 @@ const MovieDetail = () => {
         <h2 className="text-2xl font-bold text-disney-white mb-2">About this movie</h2>
         <p className="text-disney-gray-300 mb-8">{movie.description}</p>
         
-        {/* Related content */}
-        {relatedMovies.length > 0 && (
-          <MovieCarousel title="More Like This" movies={relatedMovies} />
-        )}
+        {/* Related carousels will be loaded dynamically by the MovieCarousel component */}
+        <MovieCarousel 
+          title="More Like This" 
+          categoryId="similar" 
+          movieId={movie.id} 
+        />
         
         {/* Suggested by category */}
-        {movie.category.map((category, index) => {
-          const categoryMovies = getMoviesByCategory(category).filter(m => m.id !== movie.id);
-          if (categoryMovies.length === 0) return null;
-          
-          return (
-            <MovieCarousel 
-              key={index}
-              title={`More ${category.charAt(0).toUpperCase() + category.slice(1)}`} 
-              movies={categoryMovies.slice(0, 8)} 
-            />
-          );
-        })}
+        {movie.category.slice(0, 3).map((category, index) => (
+          <MovieCarousel 
+            key={index}
+            title={`More ${category.charAt(0).toUpperCase() + category.slice(1)}`} 
+            categoryId={category}
+          />
+        ))}
       </div>
     </div>
   );
