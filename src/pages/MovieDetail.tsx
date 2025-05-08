@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Play, Plus, Share2, ChevronLeft, Check } from 'lucide-react';
+import { Play, Plus, Share2, ChevronLeft, Check, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import MovieCarousel from '@/components/MovieCarousel';
@@ -9,12 +9,36 @@ import { useMovieDetails, useFavorites } from '@/data/movies';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
+import { findMovieTrailer, PexelsVideo } from '@/services/pexelsApi';
+import { addToDownloads } from '@/services/api';
 
 const MovieDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { data: movie, isLoading, error } = useMovieDetails(id || '');
   const [isScrolled, setIsScrolled] = useState(false);
   const { addFavorite, removeFavorite, isFavorite } = useFavorites();
+  const [trailer, setTrailer] = useState<PexelsVideo | null>(null);
+  const [isLoadingTrailer, setIsLoadingTrailer] = useState(false);
+  
+  // Fetch Pexels video when movie data is available
+  useEffect(() => {
+    const fetchTrailer = async () => {
+      if (movie) {
+        try {
+          setIsLoadingTrailer(true);
+          // Try to find a relevant video from Pexels
+          const video = await findMovieTrailer(movie.title);
+          setTrailer(video);
+        } catch (err) {
+          console.error('Error fetching trailer:', err);
+        } finally {
+          setIsLoadingTrailer(false);
+        }
+      }
+    };
+    
+    fetchTrailer();
+  }, [movie]);
   
   // Handle scroll events for the animation
   useEffect(() => {
@@ -82,6 +106,49 @@ const MovieDetail = () => {
     }
   };
 
+  const handleDownload = async () => {
+    if (!movie) return;
+    
+    try {
+      await addToDownloads(movie);
+      toast({
+        title: "Download started",
+        description: `${movie.title} has been added to your downloads`,
+      });
+    } catch (err) {
+      toast({
+        title: "Download failed",
+        description: "Could not download this content",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePlay = () => {
+    if (!movie) return;
+    
+    if (trailer) {
+      // Find the best quality video file
+      const videoFile = trailer.video_files
+        .sort((a, b) => b.height - a.height) // Sort by resolution (highest first)
+        .find(file => file.file_type === 'video/mp4'); // Prefer mp4 format
+      
+      if (videoFile) {
+        window.open(videoFile.link, '_blank');
+      } else {
+        window.open(trailer.url, '_blank');
+      }
+    } else if (movie.videoUrl) {
+      window.open(movie.videoUrl, '_blank');
+    } else {
+      toast({
+        title: "Video unavailable",
+        description: "No video available for this title",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-disney-dark-blue pb-20">
@@ -121,14 +188,35 @@ const MovieDetail = () => {
       
       {/* Hero backdrop */}
       <div className="relative h-[60vh] min-h-[400px]">
-        <div className="absolute inset-0">
-          <img 
-            src={movie.backdropPath} 
-            alt={movie.title}
-            className="w-full h-full object-cover object-top"
-          />
-          <div className="absolute inset-0 hero-gradient"></div>
-        </div>
+        {/* Show trailer preview if available */}
+        {trailer && trailer.video_files?.length > 0 ? (
+          <div className="absolute inset-0">
+            <video
+              className="w-full h-full object-cover object-top"
+              poster={trailer.image || movie.backdropPath}
+              muted
+              loop
+              autoPlay
+              playsInline
+            >
+              <source 
+                src={trailer.video_files.find(file => file.width < 1280)?.link || trailer.video_files[0].link} 
+                type={trailer.video_files[0].file_type} 
+              />
+              Your browser does not support the video tag.
+            </video>
+            <div className="absolute inset-0 hero-gradient"></div>
+          </div>
+        ) : (
+          <div className="absolute inset-0">
+            <img 
+              src={movie.backdropPath} 
+              alt={movie.title}
+              className="w-full h-full object-cover object-top"
+            />
+            <div className="absolute inset-0 hero-gradient"></div>
+          </div>
+        )}
         
         {/* Content overlay */}
         <div 
@@ -160,9 +248,12 @@ const MovieDetail = () => {
             </div>
             
             <div className="flex flex-wrap gap-4">
-              <Button className="bg-disney-white hover:bg-disney-gray-100 text-disney-dark-blue font-bold">
+              <Button 
+                className="bg-disney-white hover:bg-disney-gray-100 text-disney-dark-blue font-bold"
+                onClick={handlePlay}
+              >
                 <Play className="mr-2 h-4 w-4" />
-                Play
+                {isLoadingTrailer ? 'Loading...' : 'Play'}
               </Button>
               
               <Button 
@@ -182,6 +273,15 @@ const MovieDetail = () => {
                   </>
                 )}
               </Button>
+
+              <Button 
+                variant="outline" 
+                className="border-disney-gray-300 text-disney-white hover:bg-disney-secondary-blue"
+                onClick={handleDownload}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </Button>
               
               <Button 
                 variant="outline" 
@@ -200,6 +300,30 @@ const MovieDetail = () => {
       <div className="max-w-5xl mx-auto px-6 py-8">
         <h2 className="text-2xl font-bold text-disney-white mb-2">About this movie</h2>
         <p className="text-disney-gray-300 mb-8">{movie.description}</p>
+
+        {trailer && (
+          <div className="mb-8">
+            <h3 className="text-xl font-bold text-disney-white mb-4">Trailer</h3>
+            <div className="aspect-video rounded-lg overflow-hidden">
+              <video
+                className="w-full h-full object-cover"
+                poster={trailer.image}
+                controls
+              >
+                <source 
+                  src={trailer.video_files.find(file => file.width < 1280)?.link || trailer.video_files[0].link} 
+                  type={trailer.video_files[0].file_type} 
+                />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            {trailer.user && (
+              <p className="text-xs text-disney-gray-400 mt-2">
+                Video by {trailer.user.name} on <a href={trailer.url} target="_blank" rel="noopener noreferrer" className="underline">Pexels</a>
+              </p>
+            )}
+          </div>
+        )}
         
         {/* Related carousels will be loaded dynamically by the MovieCarousel component */}
         <MovieCarousel 
