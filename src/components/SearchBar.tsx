@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -26,9 +25,10 @@ const SearchBar = () => {
     e.preventDefault();
     if (!searchTerm) return;
     
-    // Close search and navigate to search results (could build a dedicated search results page)
+    // Close search and navigate to search results page
     setIsOpen(false);
-    navigate(`/movies?search=${encodeURIComponent(searchTerm)}`);
+    navigate(`/search?q=${encodeURIComponent(searchTerm)}`);
+    setSearchTerm('');
   };
   
   const handleMovieClick = (movieId: number) => {
